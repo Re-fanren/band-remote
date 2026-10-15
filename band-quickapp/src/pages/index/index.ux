@@ -1,0 +1,276 @@
+<template>
+  <!-- 连接状态页：展示与手机的互联状态，并提供重连 / 进入遥控入口 -->
+  <div class="page">
+    <div class="header">
+      <text class="title">腕控</text>
+      <text class="subtitle">手环遥控手机</text>
+    </div>
+
+    <!-- 状态卡片 -->
+    <div class="status-card">
+      <div class="dot" style="background-color: {{ stateColor }};"></div>
+      <text class="status-text">{{ stateText }}</text>
+      <text class="status-hint">{{ hintText }}</text>
+    </div>
+
+    <!-- 诊断信息：手环端日志在本机完全读不到，只能把诊断码渲染出来给人看 -->
+    <text class="diag-text" style="color: {{ diagColor }}; font-weight: {{ diagBold ? 'bold' : 'normal' }};">诊断 {{ diagText }}</text>
+    <!-- conn 能力列表：判断 instance() 返回的是否为有效实例 -->
+    <text class="cap-text">{{ capText }}</text>
+
+    <!-- 操作按钮 -->
+    <div class="btn primary" @click="goRemote">
+      <text class="btn-text">进入遥控</text>
+    </div>
+
+    <div class="btn ghost" @click="reconnect">
+      <text class="btn-text ghost-text">重新连接</text>
+    </div>
+
+    <!-- 版本标识：排查时一眼确认手上装的是哪一版，避免"改了但装的是旧版"的错位 -->
+    <text class="ver-text">版本 {{ buildTag }} · {{ featureText }}</text>
+
+    <div class="footer">
+      <text class="footer-text">未连接时自动进入本地模拟，可正常体验手势交互</text>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import interconnect from '@system.interconnect'
+import transport, { STATE, setInterconnectModule, BUILD_TAG, BUILD_FEATURES } from '../../common/transport'
+import logger from '../../common/logger'
+
+export default {
+  data: {
+    stateText: '未连接',
+    stateColor: '#8a8a8a',
+    hintText: '请确保手机端 App 已启动',
+    diagText: '—',
+    diagColor: '#5a6b8c',
+    diagBold: false,
+    capText: '',
+    buildTag: BUILD_TAG,
+    featureText: BUILD_FEATURES.join(' / '),
+    connected: false
+  },
+
+  onInit() {
+    logger.log('连接页 onInit')
+    // ★ 这里不做互联初始化，只订阅状态（初始化推迟到 onReady，见下）
+    this.refresh()
+    transport.onStateChange(() => this.refresh())
+  },
+
+  /**
+   * ★ 对齐官方 demo：在页面 onReady 里注入互联模块并建连接。
+   *   放在 onInit / app.onCreate 都太早，互联服务可能还没就绪。
+   */
+  onReady() {
+    logger.log('连接页 onReady，注入互联模块并初始化通道')
+    setInterconnectModule(interconnect)
+    transport.init()
+    this.refresh()
+  },
+
+  onShow() {
+    this.refresh()
+  },
+
+  /**
+   * 刷新页面状态
+   */
+  refresh() {
+    this.stateText = transport.getStateText()
+    this.connected = transport.isOnline()
+
+    if (transport.mock) {
+      this.stateColor = '#ffb300'
+      this.hintText = '模拟模式：' + (transport.lastError || '未连接手机端')
+    } else if (this.connected) {
+      this.stateColor = '#22c55e'
+      this.hintText = '链路正常，可下发指令'
+    } else if (transport.getState() === STATE.CONNECTING) {
+      this.stateColor = '#3b82f6'
+      this.hintText = '正在建立互联通道…'
+    } else {
+      this.stateColor = '#8a8a8a'
+      this.hintText = '请确保手机端 App 已启动'
+    }
+
+    // 诊断行：把 getReadyState / getApkStatus / diagnosis 的结果直接显示出来。
+    // 手环端日志读不到，这行字是排查"手环连不上"的唯一线索。
+    const d = transport.diag || {}
+    const parts = []
+    if (d.code) parts.push('码' + d.code)
+    if (d.apkStatus) parts.push('apk' + d.apkStatus)
+    if (d.ready) parts.push('ready' + d.ready)
+    if (d.msg) parts.push(d.msg)
+    // conn 能力列表：判断 instance() 返回的是否为有效实例，单独一行展示
+    this.capText = d.capability ? 'conn: ' + d.capability : ''
+    this.diagText = parts.join(' · ') || '—'
+
+    // ★ 未连接时把诊断行染成红色、放大，避免被忽略（此前 9px 蓝灰字几乎看不见，
+    //   导致失败原因传不出来，只能反复猜）
+    this.diagColor = this.connected ? '#5a6b8c' : (transport.mock ? '#ffb300' : '#ef4444')
+    this.diagBold = !this.connected
+  },
+
+  /** 手动跑一次连接诊断（页面可触发） */
+  diagnose() {
+    logger.log('用户触发连接诊断')
+    this.diagText = '诊断中…'
+    transport.runDiagnosis()
+  },
+
+  /**
+   * 重新连接
+   */
+  reconnect() {
+    logger.log('用户触发重新连接')
+    this.stateText = '连接中'
+    this.stateColor = '#3b82f6'
+    transport.reconnect()
+  },
+
+  /**
+   * 进入遥控页
+   */
+  goRemote() {
+    logger.log('进入遥控页')
+    // ★ 必须走 import 的 router；this.$router 在 Vela 上不存在（且 manifest 需声明 system.router）
+    try {
+      router.push({ uri: 'pages/remote' })
+    } catch (err) {
+      logger.log('跳页失败', err)
+      this.hintText = '跳页失败：' + err
+    }
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 192px;
+  height: 490px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000000;
+  padding-top: 54px;
+  padding-bottom: 24px;
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+.header {
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.title {
+  font-size: 22px;
+  color: #ffffff;
+  font-weight: bold;
+}
+
+.subtitle {
+  font-size: 11px;
+  color: #666666;
+  margin-top: 4px;
+}
+
+.status-card {
+  width: 164px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #141414;
+  border-radius: 14px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  margin-bottom: 8px;
+}
+
+.status-text {
+  font-size: 16px;
+  color: #ffffff;
+}
+
+.status-hint {
+  font-size: 10px;
+  color: #777777;
+  margin-top: 6px;
+  text-align: center;
+}
+
+.diag-text {
+  font-size: 12px;
+  color: #5a6b8c;
+  margin-bottom: 12px;
+  text-align: center;
+  lines: 2;
+}
+
+.ver-text {
+  font-size: 9px;
+  color: #444444;
+  margin-top: 2px;
+  margin-bottom: 10px;
+  text-align: center;
+  lines: 3;
+}
+
+.cap-text {
+  font-size: 8px;
+  color: #3f5a7a;
+  margin-bottom: 10px;
+  text-align: center;
+  lines: 4;
+}
+
+.btn {
+  width: 164px;
+  height: 44px;
+  border-radius: 22px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.primary {
+  background-color: #2563eb;
+}
+
+.ghost {
+  background-color: #1c1c1c;
+}
+
+.btn-text {
+  font-size: 15px;
+  color: #ffffff;
+}
+
+.ghost-text {
+  color: #cccccc;
+}
+
+.footer {
+  flex: 1;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.footer-text {
+  font-size: 9px;
+  color: #4d4d4d;
+  text-align: center;
+}
+</style>

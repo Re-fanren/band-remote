@@ -1,0 +1,41 @@
+# ---- 签名与密钥：严禁提交 ----
+*.jks
+*.keystore
+*.p12
+*.pem
+*.pk8
+keystore.properties
+sign/
+android-app/keystore/
+
+# ---- 第三方 SDK 二进制（按 README 指引自行下载）----
+*.aar
+
+# ---- 构建产物 ----
+*.apk
+*.rpk
+build/
+dist/
+.gradle/
+
+# ---- 本地配置 ----
+local.properties
+
+# ---- 日志与临时文件 ----
+*.log
+.__grab_marker
+.temp_*
+*.bak
+
+# ---- 依赖 ----
+node_modules/
+
+# ---- 备份目录 ----
+apk-backup/
+artifacts/
+
+# ---- 编辑器 ----
+.idea/
+.vscode/
+*.iml
+.DS_Store

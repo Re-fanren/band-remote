@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 简易矢量图标：手环 + 箭头 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#3D6BE5"
+        android:pathData="M0,0h108v108h-108z" />
+
+    <!-- 手环胶囊外形 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M44,20h20a8,8 0 0 1 8,8v52a8,8 0 0 1 -8,8h-20a8,8 0 0 1 -8,-8v-52a8,8 0 0 1 8,-8z" />
+
+    <!-- 屏内上滑箭头 -->
+    <path
+        android:fillColor="#3D6BE5"
+        android:pathData="M54,38l10,12h-6v16h-8v-16h-6z" />
+</vector>

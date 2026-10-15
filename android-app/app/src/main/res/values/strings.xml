@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">手环遥控</string>
+    <string name="app_subtitle">小米手环 9 Vela 快应用 + 安卓无障碍双端骨架</string>
+    <string name="settings_title">设置</string>
+
+    <!-- 无障碍服务在系统列表中的显示名 -->
+    <string name="accessibility_service_label">手环遥控（手势执行）</string>
+    <string name="accessibility_service_description">接收小米手环下发的指令，模拟上滑/下滑/左滑/右滑、返回、桌面、多任务、锁屏等操作。</string>
+
+    <!-- 状态标签 -->
+    <string name="label_link_state">链路状态</string>
+    <string name="label_a11y_state">无障碍服务</string>
+    <string name="label_last_cmd">最近指令</string>
+
+    <!-- 按钮 -->
+    <string name="btn_open_a11y">开启无障碍服务</string>
+    <string name="btn_start_service">启动保活服务</string>
+    <string name="btn_stop_service">停止保活服务</string>
+    <string name="btn_overlay">授予悬浮窗权限</string>
+    <string name="btn_mock_test">注入模拟指令（上滑）</string>
+    <string name="btn_settings">设置</string>
+    <string name="btn_pick_app">选择应用</string>
+    <string name="btn_clear_app">清除选择</string>
+
+    <!-- 设置页分区 -->
+    <string name="section_permission">权限与引导</string>
+    <string name="section_transport">通信通道</string>
+    <string name="section_switch">功能开关</string>
+    <string name="section_shortcut">自定义快捷启动应用</string>
+
+    <!-- 通道 -->
+    <string name="transport_mock">本地模拟（无需手环，默认）</string>
+    <string name="transport_ble">BLE GATT 直连（需手环侧 GATT Server）</string>
+    <string name="transport_interconnect">小米互联通道（需官方 SDK / authkey）</string>
+
+    <!-- 开关 -->
+    <string name="sw_mouse_mode">鼠标（指针）模式</string>
+    <string name="sw_auto_start">开机自动启动保活服务</string>
+    <string name="sw_float_window">显示悬浮窗状态提示</string>
+
+    <!-- 悬浮窗 -->
+    <string name="float_title">手环遥控</string>
+    <string name="float_default">链路：未连接</string>
+
+    <!-- 通知 -->
+    <string name="keep_alive_text">链路保活中，正在等待手环指令</string>
+
+    <!-- 提示 -->
+    <string name="toast_enable_a11y">请在列表中勾选「手环遥控」以开启无障碍服务</string>
+    <string name="label_pick_app">选择快捷启动应用</string>
+    <string name="not_set">未设置</string>
+    <string name="tip_a11y_risk">提示：无障碍权限可模拟点击与滑屏，属于高敏感权限，仅在本机自用场景下开启。</string>
+</resources>

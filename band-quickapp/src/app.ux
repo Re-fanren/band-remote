@@ -1,0 +1,25 @@
+<script>
+/**
+ * 应用入口
+ * Vela 快应用生命周期：onCreate / onDestroy
+ * 启动时初始化「手环 <-> 手机」互联通道
+ */
+import transport from './common/transport'
+import logger from './common/logger'
+
+export default {
+  onCreate() {
+    // ★ 这里【不再】初始化互联通道。
+    //   官方 demo 是在页面 .ux 里 import @system.interconnect、并在页面 onReady() 中
+    //   才 interconnect.instance()。在 app 的 onCreate 阶段就去建连接太早 ——
+    //   互联服务往往尚未就绪，instance() 会拿到不可用实例，随后 onclose 立刻触发，
+    //   表现就是"手机端已连接、手环端却连不上"。
+    //   改由 pages/index 的 onReady() 负责注入模块并 init()。
+    logger.log('app onCreate，互联通道交由首页 onReady 初始化')
+  },
+  onDestroy() {
+    logger.log('app onDestroy，释放互联通道')
+    transport.release()
+  }
+}
+</script>

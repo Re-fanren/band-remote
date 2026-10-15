@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  无障碍服务配置
+  - canPerformGestures：允许使用 dispatchGesture 注入手势（核心）
+  - accessibilityFlags：flushOutput / requestFilterKeyEvents 等
+  - canRetrieveWindowContent：保留窗口内容读取能力（后续做元素级点击时可用）
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault|flagRequestFilterKeyEvents|flagRetrieveInteractiveWindows"
+    android:canPerformGestures="true"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/accessibility_service_description"
+    android:notificationTimeout="100"
+    android:settingsActivity="com.marvis.bandremote.SettingsActivity" />

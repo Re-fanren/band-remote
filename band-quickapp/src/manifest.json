@@ -1,0 +1,33 @@
+{
+  "package": "com.marvis.bandremote",
+  "name": "腕控",
+  "versionName": "1.0.6",
+  "versionCode": 6,
+  "minPlatformVersion": 1000,
+  "icon": "/common/logo.png",
+  "deviceTypeList": ["watch"],
+  "features": [
+    { "name": "system.router" },
+    { "name": "system.interconnect" },
+    { "name": "system.device" },
+    { "name": "system.file" },
+    { "name": "system.storage" },
+    { "name": "system.vibrator" }
+  ],
+  "permissions": [
+    { "origin": "*" }
+  ],
+  "router": {
+    "entry": "pages/index",
+    "pages": {
+      "pages/index": { "component": "index", "title": "连接" },
+      "pages/remote": { "component": "remote", "title": "遥控" }
+    }
+  },
+  "display": {
+    "backgroundColor": "#000000"
+  },
+  "config": {
+    "designWidth": 192
+  }
+}

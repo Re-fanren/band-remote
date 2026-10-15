@@ -1,0 +1,18 @@
+# ---- 手环端 Vela 快应用 ----
+node_modules/
+build/
+dist/
+*.log
+
+# 构建产物 rpk 一律不入库（rpk 内含签名证书，公开会泄露）
+*.rpk
+
+# 签名私钥：严禁提交
+*.pem
+sign/
+
+# 编辑器
+.idea/
+.vscode/
+*.iml
+.DS_Store

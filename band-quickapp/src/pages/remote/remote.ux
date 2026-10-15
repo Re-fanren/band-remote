@@ -1,0 +1,427 @@
+<template>
+  <!-- 手势操作页：192×490 胶囊屏，上半区滑动识别，下半区快捷按钮 -->
+  <div class="page">
+
+    <!-- 顶部状态条 -->
+    <div class="statusbar">
+      <div class="dot" style="background-color: {{ stateColor }};"></div>
+      <text class="status-text">{{ stateText }}</text>
+      <text class="seq-text">#{{ lastSeq }}</text>
+    </div>
+
+    <!-- 手势区：滑动识别 -->
+    <div id="gesturePad"
+         class="gesture-pad"
+         @touchstart="onTouchStart"
+         @touchmove="onTouchMove"
+         @touchend="onTouchEnd"
+         @touchcancel="onTouchCancel">
+      <text class="gesture-arrow">{{ arrow }}</text>
+      <text class="gesture-label">{{ gestureLabel }}</text>
+      <text class="gesture-tip">{{ padTip }}</text>
+    </div>
+
+    <!-- 快捷按钮：系统导航 -->
+    <div class="btn-row">
+      <div class="btn small" @click="send('BACK')"><text class="btn-text">返回</text></div>
+      <div class="btn small" @click="send('HOME')"><text class="btn-text">桌面</text></div>
+      <div class="btn small" @click="send('RECENTS')"><text class="btn-text">多任务</text></div>
+    </div>
+
+    <!-- 快捷按钮：系统控制 -->
+    <div class="btn-row">
+      <div class="btn small" @click="send('LOCK')"><text class="btn-text">锁屏</text></div>
+      <div class="btn small" @click="send('VOLUME_UP')"><text class="btn-text">音量+</text></div>
+      <div class="btn small" @click="send('VOLUME_DOWN')"><text class="btn-text">音量-</text></div>
+    </div>
+
+    <!-- 鼠标模式开关 -->
+    <div class="btn wide" @click="toggleCursor">
+      <text class="btn-text">{{ cursorOn ? '关闭鼠标模式' : '开启鼠标模式' }}</text>
+    </div>
+
+    <!-- 返回连接页：本页的「返回」按钮是下发给手机的系统返回键，
+         不是页面导航，若不提供这个出口，进入本页后无法回去查看链路状态 -->
+    <div class="btn wide" @click="goBack">
+      <text class="btn-text">‹ 返回连接页</text>
+    </div>
+
+  </div>
+</template>
+
+<script>
+import transport, { setInterconnectModule } from '../../common/transport'
+import GestureDetector from '../../common/gesture'
+import protocol from '../../common/protocol'
+import logger from '../../common/logger'
+import router from '@system.router'
+import interconnect from '@system.interconnect'
+
+// 指令字 -> 提示文案 的本地映射（滑动方向）
+const SWIPE_CMD = {
+  SWIPE_UP: protocol.CMD.SWIPE_UP,
+  SWIPE_DOWN: protocol.CMD.SWIPE_DOWN,
+  SWIPE_LEFT: protocol.CMD.SWIPE_LEFT,
+  SWIPE_RIGHT: protocol.CMD.SWIPE_RIGHT
+}
+
+// 方向 -> 指示箭头
+const ARROW_MAP = {
+  SWIPE_UP: '↑',
+  SWIPE_DOWN: '↓',
+  SWIPE_LEFT: '←',
+  SWIPE_RIGHT: '→',
+  TAP: '●',
+  LONG_PRESS: '◎'
+}
+
+export default {
+  data: {
+    stateText: '未连接',
+    stateColor: '#8a8a8a',
+    arrow: '↕',
+    gestureLabel: '待操作',
+    lastSeq: 0,
+    cursorOn: false,
+    // 手势区底部提示（随鼠标模式切换文案）
+    padTip: '滑动下发手势 · 点按选位置',
+    // 手势区矩形缓存（用于把触点换算成 0~1 归一化坐标）
+    padRect: null
+  },
+
+  onInit() {
+    this.detector = new GestureDetector()
+    transport.onStateChange(() => this.refreshState())
+    transport.onMessage((frame) => {
+      // 手机端回传日志 / 状态
+      this.gestureLabel = frame.text
+    })
+    this.refreshState()
+  },
+
+  onShow() {
+    this.refreshState()
+    this.syncPadRect()
+  },
+
+  /** 与首页一致：模块注入 + 建连推迟到 onReady（init 幂等，首页已建好则直接复用） */
+  onReady() {
+    setInterconnectModule(interconnect)
+    transport.init()
+    this.refreshState()
+  },
+
+  onDestroy() {
+    this.detector.reset()
+  },
+
+  refreshState() {
+    this.stateText = transport.getStateText()
+    this.stateColor = transport.isOnline() ? '#22c55e' : (transport.mock ? '#ffb300' : '#8a8a8a')
+  },
+
+  // ---------------- 触摸事件 ----------------
+
+  onTouchStart(e) {
+    // 布局可能随页面切换 / 旋转变化，动作开始前刷新一次手势区矩形
+    this.syncPadRect()
+    const p = this.point(e)
+    this.detector.onStart(p.x, p.y)
+  },
+
+  onTouchMove(e) {
+    const p = this.point(e)
+    this.detector.onMove(p.x, p.y)
+    // 鼠标模式：把「自上次上报以来的增量位移」实时推给手机，驱动屏幕指针
+    if (this.cursorOn) {
+      this.reportCursorMove()
+    }
+  },
+
+  onTouchEnd(e) {
+    const p = this.point(e)
+    const r = this.detector.onEnd(p.x, p.y)
+    if (this.cursorOn) {
+      // 鼠标模式：点按 -> 在指针当前位置单击；其余手势不下发，避免与指针移动互相干扰
+      this.handleCursorGesture(r)
+      return
+    }
+    // 把触点一并交给指令层，用于 CLICK 归一化坐标换算
+    this.handleGesture(r, p)
+  },
+
+  onTouchCancel() {
+    this.detector.reset()
+  },
+
+  /**
+   * 鼠标模式位移上报。
+   *
+   * 上报「自上次上报以来的增量」（单位：手环手势区像素），而不是「自按下起的累计位移」：
+   * 后者会让同一段位移被反复叠加，指针飞走。
+   * 增量按整数像素发送，不足 1px 的余量保留到下一次，既保证位移不丢，也天然抑制了
+   * 手指静止时的高频空帧。
+   */
+  reportCursorMove() {
+    const d = this.detector.getPendingDelta()
+    const dx = Math.trunc(d.dx)
+    const dy = Math.trunc(d.dy)
+    if (dx === 0 && dy === 0) {
+      return
+    }
+    this.lastSeq = transport.send(protocol.CMD.CURSOR_MOVE, protocol.encodeDelta(dx, dy))
+    this.detector.advanceReported(dx, dy)
+    this.arrow = '✛'
+    this.gestureLabel = '指针 ' + dx + ',' + dy
+  },
+
+  /**
+   * 鼠标模式手势处理：点按 = 在手机屏幕指针当前位置单击（ARG 留空），
+   * 长按 / 滑动不产生导航指令（滑动已用于移动指针）。
+   */
+  handleCursorGesture(r) {
+    if (!r || r.type === 'NONE') {
+      return
+    }
+    if (r.type === 'TAP') {
+      this.arrow = ARROW_MAP.TAP
+      this.gestureLabel = protocol.CMD_TEXT[protocol.CMD.CLICK] + '（指针处）'
+      this.lastSeq = transport.send(protocol.CMD.CLICK, '')
+      return
+    }
+    if (r.type === 'LONG_PRESS') {
+      this.arrow = ARROW_MAP.LONG_PRESS
+      this.gestureLabel = '鼠标模式：长按不下发'
+    }
+  },
+
+  /**
+   * 统一取第一个触点的坐标
+   */
+  point(e) {
+    const t = (e && e.touches && e.touches.length)
+      ? e.touches[0]
+      : ((e && e.changedTouches && e.changedTouches.length) ? e.changedTouches[0] : null)
+    if (!t) {
+      return { x: 0, y: 0 }
+    }
+    return { x: t.clientX, y: t.clientY }
+  },
+
+  /**
+   * 缓存手势区矩形。
+   * 手势区被视作手机屏幕的「等比缩略图」，触点换算成 0~1 比例后发给手机，
+   * 由手机端按真实屏幕尺寸与旋转换算为像素。优先取精确布局，取不到用估算值兜底。
+   */
+  syncPadRect() {
+    const fallback = { left: 10, top: 92, width: 172, height: 300 }
+    if (!this.padRect) {
+      this.padRect = fallback
+    }
+    try {
+      const el = this.$element('gesturePad')
+      if (!el || typeof el.getBoundingClientRect !== 'function') {
+        return
+      }
+      el.getBoundingClientRect({
+        success: (rect) => {
+          if (rect && rect.width > 0 && rect.height > 0) {
+            this.padRect = {
+              left: rect.left,
+              top: rect.top,
+              width: rect.width,
+              height: rect.height
+            }
+            logger.log('手势区矩形已更新', JSON.stringify(this.padRect))
+          }
+        },
+        fail: (data, code) => {
+          logger.log('取手势区矩形失败，沿用估算值', code)
+        }
+      })
+    } catch (err) {
+      logger.log('取手势区矩形异常，沿用估算值', err)
+    }
+  },
+
+  /**
+   * 触点 -> 归一化坐标参数
+   * nx = (x - padLeft) / padWidth，ny = (y - padTop) / padHeight（自动裁剪到 0~1）
+   * @returns {string} 形如 "n:0.512300,0.412300"
+   */
+  toNormalizedArg(p) {
+    const rect = this.padRect || { left: 10, top: 92, width: 172, height: 300 }
+    const nx = ((p && p.x ? p.x : 0) - rect.left) / rect.width
+    const ny = ((p && p.y ? p.y : 0) - rect.top) / rect.height
+    return protocol.encodeNormalizedPoint(nx, ny)
+  },
+
+  // ---------------- 手势 -> 指令 ----------------
+
+  handleGesture(r, p) {
+    if (!r || r.type === 'NONE') {
+      return
+    }
+    this.arrow = ARROW_MAP[r.type] || '↕'
+
+    let cmd = ''
+    let arg = ''
+    if (SWIPE_CMD[r.type]) {
+      cmd = SWIPE_CMD[r.type]
+    } else if (r.type === 'TAP') {
+      cmd = protocol.CMD.CLICK
+      // 归一化坐标（0~1，6 位小数）；长按同样落在触点位置，手机端按屏幕尺寸换算
+      arg = this.toNormalizedArg(p || { x: 0, y: 0 })
+    } else if (r.type === 'LONG_PRESS') {
+      cmd = protocol.CMD.HOME
+    }
+
+    if (!cmd) {
+      return
+    }
+
+    this.gestureLabel = protocol.CMD_TEXT[cmd] || cmd
+    const seq = transport.send(cmd, arg)
+    this.lastSeq = seq
+    logger.log('手势', r.type, '->', cmd, arg, 'seq=', seq)
+  },
+
+  // ---------------- 按钮 ----------------
+
+  send(name) {
+    const cmd = protocol.CMD[name]
+    if (!cmd) {
+      return
+    }
+    this.gestureLabel = protocol.CMD_TEXT[cmd] || cmd
+    this.arrow = ARROW_MAP[name] || '●'
+    this.lastSeq = transport.send(cmd, '')
+  },
+
+  toggleCursor() {
+    this.cursorOn = !this.cursorOn
+    const cmd = this.cursorOn ? protocol.CMD.CURSOR_ON : protocol.CMD.CURSOR_OFF
+    this.lastSeq = transport.send(cmd, '')
+    this.arrow = this.cursorOn ? '✛' : '↕'
+    this.padTip = this.cursorOn ? '滑动移指针 · 点按单击' : '滑动下发手势 · 点按选位置'
+    this.gestureLabel = protocol.CMD_TEXT[cmd] || cmd
+    logger.log('鼠标模式', this.cursorOn ? 'ON' : 'OFF')
+  },
+
+  /**
+   * 返回连接页。
+   * ★ 与按钮「返回」区分：后者是下发给手机的 Android 系统返回键指令（BACK），
+   *   不是页面导航。没有本方法时，一旦进入本页就回不去查看链路状态。
+   */
+  goBack() {
+    try {
+      router.back()
+    } catch (e) {
+      logger.warn('router.back 失败，改用 push', e)
+      try {
+        router.push({ uri: 'pages/index' })
+      } catch (e2) {
+        logger.error('返回连接页失败', e2)
+      }
+    }
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 192px;
+  height: 490px;
+  flex-direction: column;
+  background-color: #000000;
+  padding-top: 44px;
+  padding-bottom: 14px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.statusbar {
+  width: 172px;
+  height: 20px;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 4px;
+  margin-right: 6px;
+}
+
+.status-text {
+  font-size: 11px;
+  color: #aaaaaa;
+  flex: 1;
+}
+
+.seq-text {
+  font-size: 10px;
+  color: #555555;
+}
+
+.gesture-pad {
+  width: 172px;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #101010;
+  border-radius: 18px;
+  margin-bottom: 10px;
+}
+
+.gesture-arrow {
+  font-size: 40px;
+  color: #4f8ef7;
+}
+
+.gesture-label {
+  font-size: 14px;
+  color: #ffffff;
+  margin-top: 6px;
+}
+
+.gesture-tip {
+  font-size: 9px;
+  color: #4d4d4d;
+  margin-top: 8px;
+}
+
+.btn-row {
+  width: 172px;
+  height: 40px;
+  flex-direction: row;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.btn {
+  justify-content: center;
+  align-items: center;
+  background-color: #1c1c1c;
+  border-radius: 10px;
+}
+
+.small {
+  width: 52px;
+  height: 40px;
+}
+
+.wide {
+  width: 172px;
+  height: 40px;
+  background-color: #17255c;
+}
+
+.btn-text {
+  font-size: 12px;
+  color: #dddddd;
+}
+</style>
