@@ -63,8 +63,7 @@ export const CMD = {
   // ---- 链路控制 ----
   PING: 'PING',                // 心跳
   PONG: 'PONG',                // 心跳应答
-  ACK: 'ACK',                  // 指令回执，ARG = OK / ERR:xxx
-  LOG: 'LOG'                   // 调试日志透传
+  ACK: 'ACK'                   // 指令回执，ARG = OK / ERR:xxx
 }
 
 /**
@@ -91,8 +90,7 @@ export const CMD_TEXT = {
   NOTIFY_DISMISS: '通知栏',
   PING: '心跳',
   PONG: '心跳应答',
-  ACK: '回执',
-  LOG: '日志'
+  ACK: '回执'
 }
 
 /**

@@ -35,8 +35,6 @@ class MockTransport : BaseTransport() {
             val frame = Protocol.Frame(Protocol.MAGIC, cmd, t.nextSeq(), arg)
             t.notifyFrame(frame)
         }
-
-        fun isAlive(): Boolean = current != null
     }
 
     override val name: String = "MOCK"

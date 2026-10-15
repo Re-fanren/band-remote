@@ -78,7 +78,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 链路日志弹窗：把最近 15 条留痕直接显示出来，并支持一键复制。
+     * 链路日志弹窗：把最近 60 条留痕直接显示出来，并支持一键复制。
      * ★ 为什么必须有这个入口：HyperOS 禁掉了 adb logcat，排查只能靠落盘留痕；
      *   而读留痕要么连电脑跑 adb run-as，要么——更方便的——让用户在手机上直接看并发给我。
      */
@@ -92,7 +92,7 @@ class MainActivity : AppCompatActivity() {
         }
         val scroll = android.widget.ScrollView(this).apply { addView(tv) }
         android.app.AlertDialog.Builder(this)
-            .setTitle("链路日志（最近 15 条）")
+            .setTitle("链路日志（最近 60 条）")
             .setView(scroll)
             .setNeutralButton("复制") { _, _ ->
                 val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
@@ -149,7 +149,7 @@ class MainActivity : AppCompatActivity() {
         val a11y = RemoteAccessibilityService.isRunning()
 
         binding.tvLinkState.text = getString(R.string.label_link_state) + "：" +
-            stateLabel(link) + "（" + app.transport.name + "）"
+            link.label + "（" + app.transport.name + "）"
 
         binding.tvA11yState.text = getString(R.string.label_a11y_state) + "：" +
             (if (a11y) "已开启" else "未开启") + " [" + RemoteAccessibilityService.instanceTag() + "]"
@@ -163,13 +163,6 @@ class MainActivity : AppCompatActivity() {
         binding.btnToggleService.text =
             if (KeepAliveService.running) getString(R.string.btn_stop_service)
             else getString(R.string.btn_start_service)
-    }
-
-    private fun stateLabel(state: LinkState): String = when (state) {
-        LinkState.CONNECTED -> "已连接"
-        LinkState.CONNECTING -> "连接中"
-        LinkState.MOCK -> "本地模拟"
-        LinkState.DISCONNECTED -> "未连接"
     }
 
     // ---------------- 交互 ----------------

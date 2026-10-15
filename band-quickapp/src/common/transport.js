@@ -11,7 +11,7 @@
  *
  *  ★ 可替换点 ★
  *    - 若你的 Vela SDK 版本 interconnect API 名称不同（如 connect/send/onMessage 等），
- *      只需修改本文件中标注 [ADAPTER] 的三处即可，上层协议与页面代码无需改动。
+ *      只需修改本文件中标注 [ADAPTER] 的一处即可，上层协议与页面代码无需改动。
  *    - 若后续改用 BLE GATT 直连，可新增一个 transport-ble.js 实现同样接口，
  *      在 app.ux 中替换初始化对象即可。
  */
@@ -27,9 +27,6 @@ export const STATE = {
   CONNECTING: 1,    // 连接中
   CONNECTED: 2      // 已连接
 }
-
-// 注册到小米互联的服务名（手机端需使用同名服务与之握手）
-const SERVICE_NAME = 'com.marvis.bandremote'
 
 /**
  * ★ 构建标识，会显示在手环连接页上。
@@ -276,7 +273,7 @@ class Transport {
       //   0=正常 / 204=超时 / 1001=对端应用未安装（其余按 SDK 定义）
       this.runDiagnosis()
 
-      // [ADAPTER 3/3] 兼容旧式事件监听（个别固件版本）
+      // [ADAPTER] 兼容旧式事件监听（个别固件版本）
       if (typeof interconnect.on === 'function') {
         interconnect.on('message', (data) => this.handleIncoming(data))
       }
@@ -539,7 +536,7 @@ class Transport {
   // ---------------- 内部 ----------------
 
   /**
-   * 处理手机端下发（ACK / PONG / LOG 等）
+   * 处理手机端下发（ACK / PONG 等）
    */
   handleIncoming(data) {
     let raw = ''
@@ -691,6 +688,9 @@ class Transport {
    */
   enterMock(reason) {
     this.stopAutoRetry()
+    // mock 模式下探活 shoot() 直接返回、n 不递增，20 次上限永不触发，
+    // 不显式停掉的话这个 3s 定时器会一直空转
+    this.stopProbing()
     this.mock = true
     this.state = STATE.DISCONNECTED
     this.lastError = reason || ''

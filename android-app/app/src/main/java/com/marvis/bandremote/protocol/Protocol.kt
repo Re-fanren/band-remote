@@ -201,7 +201,6 @@ object Cmd {
     const val PING = "PING"
     const val PONG = "PONG"
     const val ACK = "ACK"
-    const val LOG = "LOG"
 }
 
 /**
@@ -228,8 +227,7 @@ object CmdText {
         Cmd.NOTIFY_DISMISS to "通知栏",
         Cmd.PING to "心跳",
         Cmd.PONG to "心跳应答",
-        Cmd.ACK to "回执",
-        Cmd.LOG to "日志"
+        Cmd.ACK to "回执"
     )
 
     fun of(cmd: String): String = MAP[cmd] ?: cmd

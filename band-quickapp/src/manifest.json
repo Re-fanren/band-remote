@@ -8,11 +8,7 @@
   "deviceTypeList": ["watch"],
   "features": [
     { "name": "system.router" },
-    { "name": "system.interconnect" },
-    { "name": "system.device" },
-    { "name": "system.file" },
-    { "name": "system.storage" },
-    { "name": "system.vibrator" }
+    { "name": "system.interconnect" }
   ],
   "permissions": [
     { "origin": "*" }

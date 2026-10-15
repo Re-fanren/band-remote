@@ -89,10 +89,12 @@
             </intent-filter>
         </receiver>
 
-        <!-- 联调注入：adb 广播模拟手环下发指令（不参与正式通信链路） -->
+        <!-- 联调注入：adb 广播模拟手环下发指令（不参与正式通信链路）。
+             刻意不导出：adb 显式组件广播对非导出 receiver 同样可达，
+             而导出会让任意第三方应用也能注入指令遥控手机。 -->
         <receiver
             android:name=".service.MockInjectReceiver"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="com.marvis.bandremote.MOCK_INJECT" />
             </intent-filter>

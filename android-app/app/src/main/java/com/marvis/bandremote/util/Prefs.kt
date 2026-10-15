@@ -45,8 +45,10 @@ class Prefs(context: Context) {
 
     /** 传输通道模式：mock / ble / interconnect */
     var transportMode: String
-        // ★ 默认改为小米互联：SDK（xms-wearable-lib_1.4）已随包分发，
-        //   这是手环 9 上唯一可用的通道；找不到 SDK 时 InterconnectTransport 会自动降级提示。
+        // ★ 默认改为小米互联：这是手环 9 上唯一可用的通道。
+        //   注意：SDK（xms-wearable-lib_1.4_release.aar）不随本仓库分发，
+        //   需按 README 说明自行从官方 CDN 下载后放入 android-app/app/libs/；
+        //   找不到 SDK 时 InterconnectTransport 会自动降级提示。
         get() = sp.getString(KEY_TRANSPORT, TRANSPORT_INTERCONNECT) ?: TRANSPORT_INTERCONNECT
         set(value) = sp.edit().putString(KEY_TRANSPORT, value).apply()
 
@@ -69,7 +71,7 @@ class Prefs(context: Context) {
     }
 
     /**
-     * 链路状态追踪（诊断用，仅保留最近 15 条）。
+     * 链路状态追踪（诊断用，仅保留最近 60 条）。
      *
      * 为什么需要它：本机 logcat 读不到，且界面只显示"未连接"这类笼统状态，
      * 无法区分是「没发现节点 / 权限被拒 / 监听注册失败」等哪一种；

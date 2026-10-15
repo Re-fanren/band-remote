@@ -111,7 +111,6 @@ BR1|PONG|15|\n              手机 → 手环：心跳应答
 | `PING` | 手环 → 手机 | 心跳 | 空 | 手机收到后立即回 `PONG`（携带同一 `SEQ`） |
 | `PONG` | 手机 → 手环 | 心跳应答 | 空 | 手环收到后不处理，仅刷新链路时间戳 |
 | `ACK` | 手机 → 手环 | 指令回执 | `OK` / `ERR:xxx` | 手环按 `SEQ` 匹配待确认回调 |
-| `LOG` | 双向 | 调试日志透传 | 文本 | 仅打印，不参与业务 |
 
 #### ACK 结果码
 
@@ -168,7 +167,7 @@ BAND_DESIGN_WIDTH = 192   // 手环设计宽度，两端一致
 | 指针起点 | `CURSOR_ON` 时指针出现在屏幕中心 |
 | 边界钳制 | 指针坐标始终裁剪在 `[0, 屏宽] × [0, 屏高]` 内，不会移出屏幕 |
 | 绘制方式 | 使用 `TYPE_APPLICATION_OVERLAY` 悬浮窗（`FLAG_NOT_TOUCHABLE`），指针**不拦截触摸**，仅作视觉指示 |
-| 权限降级 | 无悬浮窗权限时鼠标模式仍可工作（仅指针不可见），点击 / 移动逻辑不受影响 |
+| 权限降级 | 无「显示在其他应用上层」权限时，指针无法显示，鼠标模式的移动 / 单击均失败（回执 `ERR:EXEC`）；非鼠标模式的坐标点击走手势注入，不受影响 |
 | 帧率 | 指针位置更新做**帧内合并**（同一帧内多次位移只重绘一次），减少悬浮窗刷新压力 |
 | 单击语义 | 鼠标模式下 `CLICK` 的 `ARG` 为空，在指针**当前位置**注入一次点击手势 |
 
@@ -182,23 +181,22 @@ BAND_DESIGN_WIDTH = 192   // 手环设计宽度，两端一致
 ### 3.1 建立链路
 
 ```
-手环(app.ux onCreate)          手机(App + KeepAliveService)
+手环(页面 .ux onReady)          手机(App + KeepAliveService)
+   │ setInterconnectModule(interconnect)  │
    │ transport.init()                     │
-   │ ── interconnect.instance(name) ──►   │ 注册同名服务 com.marvis.bandremote
-   │ ◄── success ──────────────────────    │
-   │ state = CONNECTED，启动心跳            │
-   │                                       │
+   │ ── interconnect.instance() ──────►   │ 无参数，返回连接实例 conn
+   │ ◄── conn（onmessage/onopen 等） ──   │
+   │ 主动探活发送 PING，不等 onopen        │
    │ ── BR1|PING|1| ───────────────────►   │
    │ ◄──────────────────── BR1|PONG|1| ──  │
 ```
 
 - 注册失败 / 模块缺失 / 未配对 → 手环 `enterMock()`，`mock = true`，状态显示「本地模拟」。
-- 服务名 `com.marvis.bandremote` 用于手环端 `@system.interconnect` 注册（`band-quickapp/src/common/transport.js` 的 `SERVICE_NAME`），
-  快应用互联场景两端需保持一致。
-- 手机端走官方穿戴 SDK（`com.xiaomi.xms.wearable`）时，由 `nodeId` + `Permission.DEVICE_MANAGER` 隐式寻址，
-  **不依赖该字符串**；`InterconnectTransport.SERVICE_NAME` 仅作日志标识保留。
+- 手环端 `interconnect.instance()` **无参数**（以官方互联 demo 为基准），返回连接实例 `conn`，
+  收发均走该实例（`conn.send({ data: { frame } })` / `conn.onmessage`），不依赖服务名寻址。
+- 手机端走官方穿戴 SDK（`com.xiaomi.xms.wearable`）时，由 `nodeId` + `Permission.DEVICE_MANAGER` 隐式寻址。
   SDK 的接入链路（节点发现 → 权限校验 → 注册消息监听 → 收发）与「SDK 缺失自动降级」策略，
-  见工程根目录 `README.md` 第十一节。
+  见根目录 `README.md`「准备工作」一节。
 
 ### 3.2 下发一条指令（带回执）
 

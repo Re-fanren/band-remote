@@ -118,7 +118,12 @@ class SettingsActivity : AppCompatActivity() {
             }
             App.instance.switchTransport(mode)
             refreshStates()
-            Toast.makeText(this, "已切换通道：" + binding.rgTransport.checkedRadioButtonId, Toast.LENGTH_SHORT)
+            val label = when (mode) {
+                Prefs.TRANSPORT_BLE -> "BLE 直连"
+                Prefs.TRANSPORT_INTERCONNECT -> "小米互联"
+                else -> "本地模拟"
+            }
+            Toast.makeText(this, "已切换通道：$label", Toast.LENGTH_SHORT).show()
         }
     }
 

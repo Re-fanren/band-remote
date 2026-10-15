@@ -4,13 +4,13 @@ import com.marvis.bandremote.protocol.Protocol
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * 链路状态
+ * 链路状态（label 为 UI 展示中文，全项目唯一数据源）
  */
-enum class LinkState {
-    DISCONNECTED, // 未连接
-    CONNECTING,   // 连接中
-    CONNECTED,    // 已连接
-    MOCK          // 本地模拟
+enum class LinkState(val label: String) {
+    DISCONNECTED("未连接"),
+    CONNECTING("连接中"),
+    CONNECTED("已连接"),
+    MOCK("本地模拟")
 }
 
 /**
@@ -75,12 +75,7 @@ abstract class BaseTransport : BandTransport {
 
     override fun state(): LinkState = currentState
 
-    override fun stateText(): String = when (currentState) {
-        LinkState.CONNECTED -> "已连接"
-        LinkState.CONNECTING -> "连接中"
-        LinkState.MOCK -> "本地模拟"
-        LinkState.DISCONNECTED -> "未连接"
-    }
+    override fun stateText(): String = currentState.label
 
     override fun send(cmd: String, arg: String?): Boolean {
         val seq = seqCounter.incrementAndGet()

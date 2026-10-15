@@ -83,12 +83,7 @@ class CommandDispatcher(private val context: Context) : BandTransport.Listener {
                 // 不能走 transport.send()——它会自增一个新的 SEQ，并把原 SEQ 当成 ARG 塞进帧里，
                 // 导致对端按 SEQ 配对时永远匹配不上。故与 ack() 一样直接走 sendRaw。
                 val t = transport ?: return
-                if (t is BaseTransport) {
-                    t.sendRaw(Protocol.encode(Cmd.PONG, frame.seq, ""))
-                } else {
-                    // 非 BaseTransport 实现：退回旧写法，至少保证链路有应答
-                    t.send(Cmd.PONG, frame.seq.toString())
-                }
+                (t as? BaseTransport)?.sendRaw(Protocol.encode(Cmd.PONG, frame.seq, ""))
             }
             else -> execute(frame)
         }
@@ -238,11 +233,7 @@ class CommandDispatcher(private val context: Context) : BandTransport.Listener {
         val t = transport ?: return
         val raw = Protocol.encode(Cmd.ACK, seq, result)
         // 借助 sendRaw 通道能力：这里复用 send 的序号机制会污染序号，故直接调用 sendRaw
-        if (t is BaseTransport) {
-            t.sendRaw(raw)
-        } else {
-            t.send(Cmd.ACK, result)
-        }
+        (t as? BaseTransport)?.sendRaw(raw)
     }
 
     private fun postResult(text: String, ok: Boolean) {

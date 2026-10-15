@@ -35,12 +35,11 @@ object FloatingStatusWindow {
 
     private var rootView: View? = null
     private var windowManager: WindowManager? = null
-    private var layoutParams: WindowManager.LayoutParams? = null
     private var statusText: TextView? = null
 
     private val callback = object : CommandDispatcher.StatusCallback {
         override fun onLinkState(state: LinkState, detail: String) {
-            update("链路：" + stateLabel(state) + if (detail.isNotEmpty()) " · $detail" else "")
+            update("链路：" + state.label + if (detail.isNotEmpty()) " · $detail" else "")
         }
 
         override fun onCommand(cmdText: String, ok: Boolean) {
@@ -127,7 +126,6 @@ object FloatingStatusWindow {
             wm.addView(view, lp)
             rootView = view
             windowManager = wm
-            layoutParams = lp
             // 注册状态回调，实时刷新
             com.marvis.bandremote.App.instance.dispatcher.addStatusCallback(callback)
         } catch (e: Exception) {
@@ -150,19 +148,11 @@ object FloatingStatusWindow {
         }
         rootView = null
         windowManager = null
-        layoutParams = null
         statusText = null
     }
 
     /** 直接更新文本（主线程安全） */
     fun update(text: String) {
         main.post { statusText?.text = text }
-    }
-
-    private fun stateLabel(state: LinkState): String = when (state) {
-        LinkState.CONNECTED -> "已连接"
-        LinkState.CONNECTING -> "连接中"
-        LinkState.MOCK -> "本地模拟"
-        LinkState.DISCONNECTED -> "未连接"
     }
 }

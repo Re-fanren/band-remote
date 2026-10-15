@@ -117,13 +117,6 @@ export default {
     this.diagBold = !this.connected
   },
 
-  /** 手动跑一次连接诊断（页面可触发） */
-  diagnose() {
-    logger.log('用户触发连接诊断')
-    this.diagText = '诊断中…'
-    transport.runDiagnosis()
-  },
-
   /**
    * 重新连接
    */

@@ -57,13 +57,8 @@ import logger from '../../common/logger'
 import router from '@system.router'
 import interconnect from '@system.interconnect'
 
-// 指令字 -> 提示文案 的本地映射（滑动方向）
-const SWIPE_CMD = {
-  SWIPE_UP: protocol.CMD.SWIPE_UP,
-  SWIPE_DOWN: protocol.CMD.SWIPE_DOWN,
-  SWIPE_LEFT: protocol.CMD.SWIPE_LEFT,
-  SWIPE_RIGHT: protocol.CMD.SWIPE_RIGHT
-}
+// 手势区矩形兜底值：取不到精确布局时使用（与 <style> 中手势区定位保持一致）
+const PAD_FALLBACK_RECT = { left: 10, top: 92, width: 172, height: 300 }
 
 // 方向 -> 指示箭头
 const ARROW_MAP = {
@@ -214,9 +209,8 @@ export default {
    * 由手机端按真实屏幕尺寸与旋转换算为像素。优先取精确布局，取不到用估算值兜底。
    */
   syncPadRect() {
-    const fallback = { left: 10, top: 92, width: 172, height: 300 }
     if (!this.padRect) {
-      this.padRect = fallback
+      this.padRect = PAD_FALLBACK_RECT
     }
     try {
       const el = this.$element('gesturePad')
@@ -250,7 +244,7 @@ export default {
    * @returns {string} 形如 "n:0.512300,0.412300"
    */
   toNormalizedArg(p) {
-    const rect = this.padRect || { left: 10, top: 92, width: 172, height: 300 }
+    const rect = this.padRect || PAD_FALLBACK_RECT
     const nx = ((p && p.x ? p.x : 0) - rect.left) / rect.width
     const ny = ((p && p.y ? p.y : 0) - rect.top) / rect.height
     return protocol.encodeNormalizedPoint(nx, ny)
@@ -266,8 +260,9 @@ export default {
 
     let cmd = ''
     let arg = ''
-    if (SWIPE_CMD[r.type]) {
-      cmd = SWIPE_CMD[r.type]
+    // 手势类型名与指令字一致（SWIPE_UP 等），直接作为 cmd 下发
+    if (r.type.indexOf('SWIPE_') === 0) {
+      cmd = r.type
     } else if (r.type === 'TAP') {
       cmd = protocol.CMD.CLICK
       // 归一化坐标（0~1，6 位小数）；长按同样落在触点位置，手机端按屏幕尺寸换算

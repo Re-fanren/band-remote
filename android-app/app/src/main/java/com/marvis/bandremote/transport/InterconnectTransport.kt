@@ -46,20 +46,17 @@ import java.lang.reflect.Proxy
  *
  *  降级策略（任何一条都不会影响编译与其他通道）：
  *    - SDK 类不存在            -> DISCONNECTED + 提示「未检测到 SDK」；
- *    - 无已连接节点（未配对）   -> CONNECTING + 每 5s 重试（最多 12 次）；
+ *    - 无已连接节点（未配对）   -> CONNECTING + 每 5s 持续重试（无次数上限，直到 stop()）；
  *    - 权限被拒 / 监听注册失败  -> DISCONNECTED + 提示改走 BLE / 本地模拟。
  *
  *  说明：官方 SDK 走的是「手机 App ↔ 穿戴设备 App」的应用内消息通道，
  *  由 nodeId + DEVICE_MANAGER 权限隐式寻址，与手环端快应用 @system.interconnect
- *  的服务名不是同一套寻址方式，故 SERVICE_NAME 仅作日志标识保留。
+ *  的实例化方式（interconnect.instance() 无参数）不是同一套寻址方式。
  */
 class InterconnectTransport(private val context: Context) : BaseTransport() {
 
     companion object {
         private const val TAG = "InterconnectTransport"
-
-        /** 手环端 transport.js 中的服务名；SDK 侧按 nodeId 寻址，此常量仅作日志标识 */
-        const val SERVICE_NAME = "com.marvis.bandremote"
 
         // ---- 运行时反射加载的 SDK 类名（编译期零依赖） ----
         private const val CLS_WEARABLE = "com.xiaomi.xms.wearable.Wearable"
@@ -330,7 +327,7 @@ class InterconnectTransport(private val context: Context) : BaseTransport() {
         }
     }
 
-    /** 未发现节点：限次重试，避免无限轮询 */
+    /** 未发现节点：持续重试，直到 stop() 被调用 */
     private fun onNoNode() {
         if (!running) {
             return

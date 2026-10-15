@@ -116,13 +116,6 @@ class GestureDetector {
   }
 
   /**
-   * 实时拖动向量（自按下起的累计位移，供调试 / 指示使用）
-   */
-  getDelta() {
-    return { dx: this.lastX - this.startX, dy: this.lastY - this.startY }
-  }
-
-  /**
    * 自上次上报以来、尚未上报的位移增量（鼠标模式使用）
    * 单位为手环手势区像素，可能为负；不足 1px 的余量会留到下次一并上报。
    * @returns {{dx:number, dy:number}}
