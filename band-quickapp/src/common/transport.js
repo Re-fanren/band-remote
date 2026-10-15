@@ -33,7 +33,7 @@ export const STATE = {
  *   用途：排查时一眼确认「手上装的到底是哪一版」——此前反复出现
  *   "我改了但用户装的还是旧版"的错位，白跑很多轮。改这里必须同步 +1。
  */
-export const BUILD_TAG = 'r12'
+export const BUILD_TAG = 'r13'
 
 /**
  * 本版包含的能力清单（同样显示在页面上，便于核对）。
