@@ -135,16 +135,44 @@ rpk 通过「小米运动健康」安装到手环。安装方式随小米运动�
 
 ## 联调：互联授权
 
-这是链路上最容易卡住的一步。按顺序执行：
+按顺序执行：
 
 1. 两端都装上，且**签名同源**
 2. 手机端注册消息监听前，**必须先申请权限**：`data_manager` 与 `notify`
    - 官方 demo 的做法是一次性申请两个：`requestPermission(node.id, DEVICE_MANAGER, NOTIFY)`
    - 该申请是异步的，回调可能需要数秒，不要同步等待后立刻判失败
 3. 授权成功后再注册消息监听
-4. 在手环端点「发送消息」，手机端应收到数据
 
 诊断码参考：`0` 正常、`204` 超时、`1001` 对端应用未安装。
+
+### 手环端两个必须注意的坑
+
+这两条是 2026-10-14 一整天真机联调换来的，各自由一个具体错误码暴露：
+
+**① 必须用 `require()` 加载 `@system.interconnect`，不能只靠页面 `import`**
+
+```js
+const mod = require('@system.interconnect')     // 对
+// import interconnect from '@system.interconnect' // 可能拿到默认导出包装
+const conn = mod.instance()
+```
+
+页面 `import` 拿到的是默认导出包装对象，`require` 拿到的是模块本体，两者 `instance()` 的行为可能不同。实测症状：`conn` 上**连 `diagnosis` 方法都不存在**，说明 `instance()` 返回的不是有效实例。
+
+本项目两条路都留：优先 `require()`，失败再退回页面 `import` 注入的对象（见 `transport.js` 的 `resolveInterconnect()` 与 `setInterconnectModule()`）。
+
+**② `conn.send()` 的 `data` 必须传对象，不能传字符串**
+
+```js
+conn.send({ data: { frame: 'BR1|PING|1|' } })   // 对
+conn.send({ data: 'BR1|PING|1|' })              // 错，对端收不到
+```
+
+相关坑：`fail` 回调签名与官方 demo 不一致——官方写 `fail(res, code)`，但该固件上第二个参数是 `undefined`。不要依赖它判断错误类型，把整个 `res` 打出来看。
+
+**③ `instance()` 不是一次性的**
+
+官方 demo 在页面 `onShow()` 里每次都重新 `instance()`，说明单次调用不保证拿到可用实例（互联服务可能晚于应用就绪）。本项目在 `onShow` 里重建实例。
 
 ---
 
@@ -167,6 +195,16 @@ band-remote/
 └── docs/
     └── PROTOCOL.md               协议格式与指令字对照表
 ```
+
+---
+
+## 当前状态
+
+- **手机端**：协议编解码、指令路由、无障碍执行、ACK 回执已全链路验证通过（adb 广播注入 MOCK 通道实测）。
+- **手环端**：UI 与手势链路可用；互联通道已能发现手环节点、拉起对端应用，探活帧发送全部成功。
+- **未闭合的一环**：2026-10-14 联调中，手机端 SDK 曾同时报出 `app not installed` 与 `isWearAppInstalled = true` 这组矛盾结果，当时未定位到根因。若复现时遇到「手机端显示已连接但收不到手环任何一帧」，重点查这里。
+
+> 排查时务必把 App 留在前台——HyperOS 的后台管控会冻结后台应用，心跳定时器停跑，表象和断连一模一样。
 
 ---
 
