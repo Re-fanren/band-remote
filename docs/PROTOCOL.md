@@ -33,7 +33,7 @@ BR1|<CMD>|<SEQ>|<ARG>\n
 ```
 BR1|SWIPE_UP|12|\n          手环 → 手机：上滑
 BR1|VOLUME_UP|13|\n         手环 → 手机：音量 +
-BR1|APP_LAUNCH|14|com.tencent.mm\n   手环 → 手机：启动微信
+BR1|APP_LAUNCH|14|com.tencent.mm\n   手机：启动微信（手机端已实现；手环端暂无入口）
 BR1|CLICK|15|n:0.512300,0.412300\n  手环 → 手机：点击屏幕 (51.23%, 41.23%) 处（归一化，推荐写法）
 BR1|CLICK|16|540,1200\n     手环 → 手机：点击物理像素 (540, 1200)（旧写法，兼容）
 BR1|CURSOR_ON|17|\n         手环 → 手机：开启鼠标模式（显示指针）
@@ -101,7 +101,7 @@ BR1|PONG|15|\n              手机 → 手环：心跳应答
 
 | 指令字 | 中文 | ARG | 手机端行为 |
 |---|---|---|---|
-| `APP_LAUNCH` | 启动应用 | 包名，如 `com.tencent.mm` | `getLaunchIntentForPackage` + `FLAG_ACTIVITY_NEW_TASK` |
+| `APP_LAUNCH` | 启动应用 | 包名，如 `com.tencent.mm` | `getLaunchIntentForPackage` + `FLAG_ACTIVITY_NEW_TASK`（手环端暂无入口，无 UI 发送该指令） |
 | `NOTIFY_DISMISS` | 通知栏 | 空 | 全局动作 `GLOBAL_ACTION_NOTIFICATIONS`（下拉通知栏；骨架手环端未接按钮） |
 
 ### 2.6 链路控制（双向）
