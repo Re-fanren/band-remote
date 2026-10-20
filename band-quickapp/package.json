@@ -2,7 +2,7 @@
   "name": "band-remote-quickapp",
   "version": "1.0.0",
   "description": "小米手环9 遥控手机 - Vela JS 快应用端（打包产出 rpk）",
-  "author": "刘一凡",
+  "author": "Liu Yifan",
   "license": "MIT",
   "scripts": {
     "start": "aiot start",
