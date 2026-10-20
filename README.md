@@ -9,6 +9,35 @@
 
 ---
 
+## English Summary
+
+**band-remote** turns a Xiaomi Smart Band 9 into a remote control for an Android phone — swipe gestures, back, home, recents, lock screen, volume, and a virtual mouse cursor. Two ends, one channel:
+
+| Piece | What it is | Source |
+|---|---|---|
+| Band side | Xiaomi Vela JS quick app → `.rpk` | `band-quickapp/` |
+| Phone side | Kotlin `AccessibilityService` → `.apk`; gestures run through `dispatchGesture()` | `android-app/` |
+| Transport | Xiaomi Interconnect (`system.interconnect`), UTF-8 line protocol `BR1\|<CMD>\|<SEQ>\|<ARG>\n` | `docs/PROTOCOL.md` |
+
+The transport choice is the central finding of this project: **third-party quick apps on the Band 9 have no BLE and no network access** — `system.bluetooth.ble`, `system.fetch` and `system.request` are all unsupported per Xiaomi's official module support table. Running a GATT server or client from the band is therefore a dead end at the firmware level, not a missing implementation. `system.interconnect`, which rides the existing Mi Fitness link, is the only working path.
+
+**Requirements**: Band 9 / 9 Pro paired with Mi Fitness; Android 7.0+ (`minSdk 24`); JDK 17 and Android SDK 34 for the APK; Node.js for the rpk.
+
+**Build**:
+
+```bash
+cd android-app   && ./gradlew assembleDebug            # → app/build/outputs/apk/debug/
+cd band-quickapp && npm install && npm run release      # → .rpk
+```
+
+**⚠️ Signing**: the APK and the rpk must be signed with the **same** keystore. The Interconnect SDK verifies signatures and fails *silently* on mismatch — the phone side simply keeps reporting "not connected", which is very hard to diagnose. Neither the SDK (`.aar`) nor a keystore is shipped here; see the Chinese sections below for the download link and signing setup.
+
+**Status**: end-to-end remote control verified on a real device, build `r13` (2026-10-19).
+
+MIT licensed. Unofficial personal project — not affiliated with Xiaomi, and Android is a trademark of Google LLC.
+
+---
+
 ## 功能
 
 | 分类 | 能力 |
