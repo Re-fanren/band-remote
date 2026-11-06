@@ -60,7 +60,7 @@ export default {
     logger.log('连接页 onInit')
     // ★ 这里不做互联初始化，只订阅状态（初始化推迟到 onReady，见下）
     this.refresh()
-    transport.onStateChange(() => this.refresh())
+    this._offState = transport.onStateChange(() => this.refresh())
   },
 
   /**
@@ -76,6 +76,14 @@ export default {
 
   onShow() {
     this.refresh()
+  },
+
+  onDestroy() {
+    // transport 是单例，页面销毁必须注销，否则回调累积并写已销毁的页面
+    if (this._offState) {
+      this._offState()
+      this._offState = null
+    }
   },
 
   /**

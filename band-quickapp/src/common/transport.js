@@ -154,15 +154,39 @@ class Transport {
     return this.state === STATE.CONNECTED
   }
 
+  /**
+   * 注册状态变化监听，返回一个「注销函数」。
+   * ★ 页面 onDestroy 必须调用它：transport 是单例，页面反复进出时旧回调会
+   *   一直留在数组里，既泄漏内存，也会在页面销毁后继续写页面 data。
+   */
   onStateChange(cb) {
-    if (typeof cb === 'function') {
-      this.listeners.push(cb)
+    if (typeof cb !== 'function') {
+      return () => {}
+    }
+    this.listeners.push(cb)
+    return () => this.offStateChange(cb)
+  }
+
+  offStateChange(cb) {
+    const i = this.listeners.indexOf(cb)
+    if (i >= 0) {
+      this.listeners.splice(i, 1)
     }
   }
 
+  /** 注册消息监听，返回注销函数（用法同 onStateChange） */
   onMessage(cb) {
-    if (typeof cb === 'function') {
-      this.messageHandlers.push(cb)
+    if (typeof cb !== 'function') {
+      return () => {}
+    }
+    this.messageHandlers.push(cb)
+    return () => this.offMessage(cb)
+  }
+
+  offMessage(cb) {
+    const i = this.messageHandlers.indexOf(cb)
+    if (i >= 0) {
+      this.messageHandlers.splice(i, 1)
     }
   }
 
@@ -208,6 +232,16 @@ class Transport {
       //   旧实现把 instance 当作「带 name/success/fail 的注册调用」，且把 send/onmessage
       //   挂在模块对象上 —— 这两处错误导致永远进入本地模拟，这就是「能打开不能遥控」的根因。
       this.conn = mod.instance()
+
+      // ★ 空实例守卫：互联服务未就绪时 instance() 可能返回 null / undefined。
+      //   继续给 conn 挂 onmessage 等回调会抛 TypeError，被外层 catch 吞成
+      //   笼统的「初始化异常」，掩盖真实原因。这里显式降级并写精确原因，
+      //   同时复位 inited，保证「重新连接」按钮能再次走完整 init()。
+      if (!this.conn) {
+        this.inited = false
+        this.enterMock('instance() 返回空实例')
+        return
+      }
 
       // ★★ 探测 conn 的真实能力：把可用方法名列到页面上。
       //   此前 conn 上连 diagnosis 都没有，强烈怀疑 instance() 返回的不是有效实例
@@ -274,7 +308,12 @@ class Transport {
       this.runDiagnosis()
 
       // [ADAPTER] 兼容旧式事件监听（个别固件版本）
-      if (typeof interconnect.on === 'function') {
+      // ★ 空值守卫：interconnect 只在页面 setInterconnectModule() 注入后才有值，
+      //   纯 require 路径下它是 null，直接取 .on 会抛 TypeError，被外层 catch
+      //   吞成笼统的「初始化异常」，并连带跳过下面的主动探活与自动重试
+      //   （这两步是"首次发送才激活通道"的关键）。这里只加守卫、不换对象，
+      //   保持真机上原有的监听注册行为不变。
+      if (interconnect && typeof interconnect.on === 'function') {
         interconnect.on('message', (data) => this.handleIncoming(data))
       }
 
