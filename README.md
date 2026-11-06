@@ -32,7 +32,7 @@ cd band-quickapp && npm install && npm run release      # → .rpk
 
 **⚠️ Signing**: the APK and the rpk must be signed with the **same** keystore. The Interconnect SDK verifies signatures and fails *silently* on mismatch — the phone side simply keeps reporting "not connected", which is very hard to diagnose. Neither the SDK (`.aar`) nor a keystore is shipped here; see the Chinese sections below for the download link and signing setup.
 
-**Status**: end-to-end remote control verified on a real device, build `r13` (2026-10-19).
+**Status**: end-to-end remote control verified on a real device; latest build `v0.2.0` (2026-11-06), with full-screen function menu and new app icon.
 
 MIT licensed. Unofficial personal project — not affiliated with Xiaomi, and Android is a trademark of Google LLC.
 
@@ -231,7 +231,7 @@ band-remote/
 
 - **手机端**：协议编解码、指令路由、无障碍执行、ACK 回执已全链路验证通过（adb 广播注入 MOCK 通道实测）。
 - **手环端**：UI 与手势链路可用；互联通道可发现手环节点、拉起对端应用。
-- **端到端遥控**：2026-10-19 使用者反馈，`r13` 构建（即本仓库当前源码，`BUILD_TAG = 'r13'`）已跑通，手环可遥控手机。
+- **端到端遥控**：2026-11-06 使用者反馈，`v0.2.0` 构建（`BUILD_TAG = 'v0.2.0'`）已跑通，手环可遥控手机；全屏功能菜单与新图标均真机验证通过。
 
 > 排障提示：HyperOS 的后台管控会冻结后台 App，心跳定时器停跑，**表象与断连一模一样**。排查时务必把 App 留在前台。
 
@@ -242,7 +242,7 @@ band-remote/
 ## 已知限制
 
 - **HyperOS 会清理后台进程**，可能导致无障碍服务被系统回收，表现为遥控突然失效。根治需要前台服务 + 常驻通知，目前未实现。
-- 手环端屏幕为 192×490 胶囊屏，交互以手势为主，复杂菜单不现实。
+- 手环端屏幕为 192×490 胶囊屏，交互以手势为主；6 个系统功能键收进「功能菜单」页（2 列 × 3 行全屏布局），与滑动操作区同页切换。
 - 部分系统操作（如锁屏）要求 API 28+。
 
 ---

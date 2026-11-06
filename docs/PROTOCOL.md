@@ -64,10 +64,10 @@ BR1|PONG|15|\n              手机 → 手环：心跳应答
 
 | 指令字 | 中文 | ARG | 手机端行为 | 手环侧入口 |
 |---|---|---|---|---|
-| `BACK` | 返回 | 空 | 全局动作 `GLOBAL_ACTION_BACK` | 按钮「返回」 |
-| `HOME` | 返回桌面 | 空 | 全局动作 `GLOBAL_ACTION_HOME` | 按钮「桌面」/ 手势区长按 |
-| `RECENTS` | 多任务 | 空 | 全局动作 `GLOBAL_ACTION_RECENTS` | 按钮「多任务」 |
-| `LOCK` | 锁屏 | 空 | 全局动作 `GLOBAL_ACTION_LOCK_SCREEN`（API 28+） | 按钮「锁屏」 |
+| `BACK` | 返回 | 空 | 全局动作 `GLOBAL_ACTION_BACK` | 功能菜单页按钮「返回」 |
+| `HOME` | 返回桌面 | 空 | 全局动作 `GLOBAL_ACTION_HOME` | 功能菜单页按钮「桌面」/ 手势区长按 |
+| `RECENTS` | 多任务 | 空 | 全局动作 `GLOBAL_ACTION_RECENTS` | 功能菜单页按钮「多任务」 |
+| `LOCK` | 锁屏 | 空 | 全局动作 `GLOBAL_ACTION_LOCK_SCREEN`（API 28+） | 功能菜单页按钮「锁屏」 |
 
 > 注：以上均为系统 `performGlobalAction` 直接执行，**无需 Root、无需设备管理器**。
 > `GLOBAL_ACTION_LOCK_SCREEN` 要求 Android 9.0（API 28）及以上；低版本 `lockScreen()` 返回 false，
