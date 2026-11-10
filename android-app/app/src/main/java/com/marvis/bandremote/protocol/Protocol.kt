@@ -121,6 +121,32 @@ object Protocol {
     /** 归一化坐标裁剪到 [0,1] */
     private fun clamp01(v: Float): Float = if (v.isNaN()) 0f else v.coerceIn(0f, 1f)
 
+    // ---------------- 拖拽参数（DRAG） ----------------
+
+    /**
+     * 拖拽起止点，均为归一化坐标（0~1，基准为手机自然竖屏方向）。
+     */
+    data class DragArg(val x1: Float, val y1: Float, val x2: Float, val y2: Float)
+
+    /**
+     * 解析拖拽参数 "n:x1,y1,x2,y2"，与手环端 encodeDragArg() 对应。
+     *
+     * @return 格式非法 / 字段不足 / 越界 / 非有限数返回 null
+     */
+    fun decodeDragArg(arg: String?): DragArg? {
+        val raw = arg?.trim().orEmpty()
+        if (!raw.startsWith(NORMALIZED_PREFIX, ignoreCase = true)) return null
+        val parts = raw.substring(NORMALIZED_PREFIX.length).split(",")
+        if (parts.size < 4) return null
+        val v = FloatArray(4)
+        for (i in 0 until 4) {
+            val n = parts[i].trim().toFloatOrNull() ?: return null
+            if (n.isNaN() || n.isInfinite() || n < 0f || n > 1f) return null
+            v[i] = n
+        }
+        return DragArg(v[0], v[1], v[2], v[3])
+    }
+
     // ---------------- 位移参数（CURSOR_MOVE） ----------------
 
     /** 手环设计宽度（快应用 manifest.json 的 designWidth），位移按此等比换算到手机像素 */
@@ -193,6 +219,9 @@ object Cmd {
     /** 单击；ARG = "n:nx,ny"（推荐）/ "x,y"（兼容）/ 空（鼠标模式：在指针当前位置单击） */
     const val CLICK = "CLICK"
 
+    /** 拖拽；ARG = "n:x1,y1,x2,y2"（归一化起止点，长按后移动） */
+    const val DRAG = "DRAG"
+
     // 业务
     const val APP_LAUNCH = "APP_LAUNCH"
     const val NOTIFY_DISMISS = "NOTIFY_DISMISS"
@@ -223,6 +252,7 @@ object CmdText {
         Cmd.CURSOR_OFF to "鼠标模式关",
         Cmd.CURSOR_MOVE to "指针移动",
         Cmd.CLICK to "单击",
+        Cmd.DRAG to "拖拽",
         Cmd.APP_LAUNCH to "启动应用",
         Cmd.NOTIFY_DISMISS to "通知栏",
         Cmd.PING to "心跳",

@@ -45,6 +45,9 @@ class RemoteAccessibilityService : AccessibilityService() {
     companion object {
         private const val TAG = "RemoteA11yService"
 
+        /** 拖拽手势时长（ms）：偏长以区别于快速滑动 */
+        private const val DRAG_DURATION_MS = 600L
+
         @Volatile
         var instance: RemoteAccessibilityService? = null
             private set
@@ -258,6 +261,21 @@ class RemoteAccessibilityService : AccessibilityService() {
         Log.i(TAG, "CLICK 归一化($nx, $ny) -> 像素(${p.x}, ${p.y}) rotation=${currentRotation()}")
         syncCursorTo(p.x, p.y)
         return performClick(p.x, p.y)
+    }
+
+    /**
+     * 在两点之间执行拖拽（手环 DRAG）。
+     *
+     * 起止点均为归一化坐标，经 [normalizedToPixel] 按当前屏幕尺寸与旋转换算为像素后，
+     * 交给已经存在的 [dispatchSwipe] 注入一条带时长的直线手势。
+     * 时长偏长（600ms）是为了让系统把它识别为「按住后拖动」而非快速滑动。
+     */
+    fun performDragNormalized(x1: Float, y1: Float, x2: Float, y2: Float): Boolean {
+        val a = normalizedToPixel(x1, y1)
+        val b = normalizedToPixel(x2, y2)
+        Log.i(TAG, "DRAG 归一化($x1,$y1)->($x2,$y2) -> 像素(${a.x},${a.y})->(${b.x},${b.y}) rotation=${currentRotation()}")
+        syncCursorTo(b.x, b.y)
+        return dispatchSwipe(a.x, a.y, b.x, b.y, DRAG_DURATION_MS)
     }
 
     // ---------------- 指针遥控（鼠标模式） ----------------

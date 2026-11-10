@@ -124,6 +124,7 @@ class CommandDispatcher(private val context: Context) : BandTransport.Listener {
 
             // ---- 指针 / 鼠标模式 ----
             Cmd.CLICK -> handleClick(svc, frame.arg)
+            Cmd.DRAG -> handleDrag(svc, frame.arg)
             Cmd.CURSOR_MOVE -> handleCursorMove(svc, frame.arg)
             Cmd.CURSOR_ON -> {
                 prefs.mouseMode = true
@@ -201,6 +202,18 @@ class CommandDispatcher(private val context: Context) : BandTransport.Listener {
             svc.syncCursorTo(point.x, point.y)
             svc.performClick(point.x, point.y)
         }
+    }
+
+    /**
+     * 拖拽：ARG = "n:x1,y1,x2,y2"（归一化起止点）
+     */
+    private fun handleDrag(svc: RemoteAccessibilityService, arg: String): Boolean {
+        val d = Protocol.decodeDragArg(arg)
+        if (d == null) {
+            Log.w(TAG, "DRAG 参数非法（应为 n:x1,y1,x2,y2）：$arg")
+            return false
+        }
+        return svc.performDragNormalized(d.x1, d.y1, d.x2, d.y2)
     }
 
     /**
