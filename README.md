@@ -32,7 +32,7 @@ cd band-quickapp && npm install && npm run release      # → .rpk
 
 **⚠️ Signing**: the APK and the rpk must be signed with the **same** keystore. The Interconnect SDK verifies signatures and fails *silently* on mismatch — the phone side simply keeps reporting "not connected", which is very hard to diagnose. Neither the SDK (`.aar`) nor a keystore is shipped here; see the Chinese sections below for the download link and signing setup.
 
-**Status**: end-to-end remote control verified on a real device; latest build `v0.2.0` (2026-11-06), with full-screen function menu and new app icon.
+**Status**: end-to-end remote control verified on a real device; latest release `v0.3.0` (2026-11-10) adds tap-where-you-touch, swipe paging and long-press drag on top of the full-screen function menu. Both the rpk and the APK must be updated for this release; the mouse-pointer mode remains available as a toggle.
 
 MIT licensed. Unofficial personal project — not affiliated with Xiaomi, and Android is a trademark of Google LLC.
 
@@ -42,7 +42,9 @@ MIT licensed. Unofficial personal project — not affiliated with Xiaomi, and An
 
 | 分类 | 能力 |
 |---|---|
-| 手势 | 上滑 / 下滑 / 左滑 / 右滑 |
+| 手势 | 上滑 / 下滑 / 左滑 / 右滑（默认模式下滑动即翻页） |
+| 点按 | 归一化坐标绝对定位，点哪打哪（`CLICK n:nx,ny`） |
+| 拖拽 | 长按 800ms 后移动，起止点归一化下发（`DRAG`） |
 | 导航 | 返回、桌面、多任务、锁屏 |
 | 音量 | 音量增、音量减、静音 |
 | 鼠标模式 | 屏幕虚拟指针、位移、点击（支持归一化坐标与绝对像素） |
@@ -231,7 +233,8 @@ band-remote/
 
 - **手机端**：协议编解码、指令路由、无障碍执行、ACK 回执已全链路验证通过（adb 广播注入 MOCK 通道实测）。
 - **手环端**：UI 与手势链路可用；互联通道可发现手环节点、拉起对端应用。
-- **端到端遥控**：2026-11-06 使用者反馈，`v0.2.0` 构建（`BUILD_TAG = 'v0.2.0'`）已跑通，手环可遥控手机；全屏功能菜单与新图标均真机验证通过。
+- **端到端遥控**：2026-11-06 使用者反馈，`v0.2.0` 构建已跑通，手环可遥控手机；全屏功能菜单与新图标均真机验证通过。
+- **当前正式版 `v0.3.0`（2026-11-10 真机验证）**：默认交互改为「点哪打哪 + 滑动翻页 + 长按拖拽」，放宽点击判定（24px / 450ms）、修正定位兜底矩形，并新增双端 `DRAG` 指令；鼠标模式开关与原有指针逻辑保留不变。连接页显示 `BUILD_TAG = 'v0.3.0'`；手环端平台版本 `1.0.8 / 8`、手机端 `2 / 1.0.1`。**本版需同时覆盖安装 rpk 与 APK**（协议新增 `DRAG`，旧 APK 不认识该指令）。
 
 > 排障提示：HyperOS 的后台管控会冻结后台 App，心跳定时器停跑，**表象与断连一模一样**。排查时务必把 App 留在前台。
 
@@ -243,6 +246,7 @@ band-remote/
 
 - **HyperOS 会清理后台进程**，可能导致无障碍服务被系统回收，表现为遥控突然失效。根治需要前台服务 + 常驻通知，目前未实现。
 - 手环端屏幕为 192×490 胶囊屏，交互以手势为主；6 个系统功能键收进「功能菜单」页（2 列 × 3 行全屏布局），与滑动操作区同页切换。
+- 点按走「172px 宽手势区 → 手机屏」等比映射，单手环像素约合 8 个手机像素，点击很小的图标仍可能偏差。
 - 部分系统操作（如锁屏）要求 API 28+。
 
 ---
