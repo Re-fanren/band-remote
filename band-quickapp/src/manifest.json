@@ -1,8 +1,8 @@
 {
   "package": "com.marvis.bandremote",
   "name": "腕控",
-  "versionName": "1.0.7",
-  "versionCode": 7,
+  "versionName": "1.0.8",
+  "versionCode": 8,
   "minPlatformVersion": 1000,
   "icon": "/common/logo_v2.png",
   "deviceTypeList": ["watch"],

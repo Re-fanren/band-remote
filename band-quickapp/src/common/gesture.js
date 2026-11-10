@@ -19,11 +19,11 @@
 // 触发滑动所需的最小位移（px）
 export const MIN_DISTANCE = 36
 // 判定为点击的最大位移（px）
-export const TAP_DISTANCE = 16
+export const TAP_DISTANCE = 24
 // 点击最长时长（ms）
-export const TAP_DURATION = 300
+export const TAP_DURATION = 450
 // 长按最短时长（ms）
-export const LONG_PRESS_DURATION = 650
+export const LONG_PRESS_DURATION = 800
 
 class GestureDetector {
   constructor() {

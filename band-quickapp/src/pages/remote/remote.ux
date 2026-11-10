@@ -64,7 +64,10 @@ import interconnect from '@system.interconnect'
 //   manifest 里的 system.router 仍要保留（首页 index.ux 用它 push 到本页）。
 
 // 手势区矩形兜底值：取不到精确布局时使用（与 <style> 中手势区定位保持一致）
-const PAD_FALLBACK_RECT = { left: 10, top: 92, width: 172, height: 300 }
+const PAD_FALLBACK_RECT = { left: 10, top: 72, width: 172, height: 306 }
+
+// 长按进入「拖拽待命」的时长（ms），与 gesture.js 的 LONG_PRESS_DURATION 一致
+const DRAG_ARM_MS = 800
 
 // 方向 -> 指示箭头
 const ARROW_MAP = {
@@ -87,7 +90,7 @@ export default {
     // 当前视图：false=滑动操作区，true=功能菜单（同页 if/else 切换，不新增页面）
     menuOpen: false,
     // 手势区底部提示（随鼠标模式切换文案）
-    padTip: '滑动下发手势 · 点按选位置',
+    padTip: '滑动翻页 · 点按选位置 · 长按拖动',
     // 手势区矩形缓存（用于把触点换算成 0~1 归一化坐标）
     padRect: null
   },
@@ -112,9 +115,15 @@ export default {
     setInterconnectModule(interconnect)
     transport.init()
     this.refreshState()
+    // 页面重建后 cursorOn 归 false，补发一帧让手机端同步退出指针模式，
+    // 避免「手环发滑动手势、手机还停在鼠标模式」的双端状态漂移
+    if (!this.cursorOn) {
+      transport.send(protocol.CMD.CURSOR_OFF, '')
+    }
   },
 
   onDestroy() {
+    this._clearPressTimer()
     this.detector.reset()
     // 注销单例上的两个回调，避免页面反复进出后回调累积、写已销毁页面
     if (this._offState) {
@@ -139,6 +148,18 @@ export default {
     this.syncPadRect()
     const p = this.point(e)
     this.detector.onStart(p.x, p.y)
+    this._startPoint = p
+    this._dragArmed = false
+    this._clearPressTimer()
+    // 仅在默认（非指针）模式启用长按拖拽：到时手指仍按着即进入「拖拽待命」，
+    // 抬指时用起止点下发一次 DRAG。鼠标模式的原有行为完全不变。
+    if (!this.cursorOn) {
+      this._pressTimer = setTimeout(() => {
+        this._dragArmed = true
+        this.arrow = '✥'
+        this.gestureLabel = '拖拽待命 · 移动后松手'
+      }, DRAG_ARM_MS)
+    }
   },
 
   onTouchMove(e) {
@@ -153,9 +174,16 @@ export default {
   onTouchEnd(e) {
     const p = this.point(e)
     const r = this.detector.onEnd(p.x, p.y)
+    this._clearPressTimer()
     if (this.cursorOn) {
       // 鼠标模式：点按 -> 在指针当前位置单击；其余手势不下发，避免与指针移动互相干扰
       this.handleCursorGesture(r)
+      return
+    }
+    // 长按待命：起止点有位移 -> 拖拽；原地不动 -> 保持原来的「返回桌面」
+    if (this._dragArmed) {
+      this.handleDrag(this._startPoint, p)
+      this._dragArmed = false
       return
     }
     // 把触点一并交给指令层，用于 CLICK 归一化坐标换算
@@ -163,6 +191,8 @@ export default {
   },
 
   onTouchCancel() {
+    this._clearPressTimer()
+    this._dragArmed = false
     this.detector.reset()
   },
 
@@ -260,11 +290,44 @@ export default {
    * nx = (x - padLeft) / padWidth，ny = (y - padTop) / padHeight（自动裁剪到 0~1）
    * @returns {string} 形如 "n:0.512300,0.412300"
    */
-  toNormalizedArg(p) {
+  toNormalizedPoint(p) {
     const rect = this.padRect || PAD_FALLBACK_RECT
     const nx = ((p && p.x ? p.x : 0) - rect.left) / rect.width
     const ny = ((p && p.y ? p.y : 0) - rect.top) / rect.height
-    return protocol.encodeNormalizedPoint(nx, ny)
+    return [nx, ny]
+  },
+
+  toNormalizedArg(p) {
+    const n = this.toNormalizedPoint(p)
+    return protocol.encodeNormalizedPoint(n[0], n[1])
+  },
+
+  /** 清掉长按定时器，避免页面销毁后回调写已销毁实例 */
+  _clearPressTimer() {
+    if (this._pressTimer) {
+      clearTimeout(this._pressTimer)
+      this._pressTimer = null
+    }
+  },
+
+  /**
+   * 长按拖拽：起止点都换算成归一化坐标后一次下发。
+   * 原地未移动时保持原来的「长按 -> 返回桌面」语义。
+   */
+  handleDrag(p1, p2) {
+    const dx = (p2 && p2.x ? p2.x : 0) - (p1 && p1.x ? p1.x : 0)
+    const dy = (p2 && p2.y ? p2.y : 0) - (p1 && p1.y ? p1.y : 0)
+    if (Math.sqrt(dx * dx + dy * dy) < 24) {
+      this.arrow = ARROW_MAP.LONG_PRESS
+      this.gestureLabel = protocol.CMD_TEXT[protocol.CMD.HOME] || '返回桌面'
+      this.lastSeq = transport.send(protocol.CMD.HOME, '')
+      return
+    }
+    const arg = protocol.encodeDragArg(this.toNormalizedPoint(p1), this.toNormalizedPoint(p2))
+    this.arrow = '✥'
+    this.gestureLabel = protocol.CMD_TEXT[protocol.CMD.DRAG] || '拖拽'
+    this.lastSeq = transport.send(protocol.CMD.DRAG, arg)
+    logger.log('拖拽', arg, 'seq=', this.lastSeq)
   },
 
   // ---------------- 手势 -> 指令 ----------------
@@ -315,7 +378,7 @@ export default {
     const cmd = this.cursorOn ? protocol.CMD.CURSOR_ON : protocol.CMD.CURSOR_OFF
     this.lastSeq = transport.send(cmd, '')
     this.arrow = this.cursorOn ? '✛' : '↕'
-    this.padTip = this.cursorOn ? '滑动移指针 · 点按单击' : '滑动下发手势 · 点按选位置'
+    this.padTip = this.cursorOn ? '滑动移指针 · 点按单击' : '滑动翻页 · 点按选位置 · 长按拖动'
     this.gestureLabel = protocol.CMD_TEXT[cmd] || cmd
     logger.log('鼠标模式', this.cursorOn ? 'ON' : 'OFF')
   },

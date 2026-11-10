@@ -56,6 +56,9 @@ export const CMD = {
   CURSOR_MOVE: 'CURSOR_MOVE',  // 指针移动，ARG = "dx,dy"（相对上次上报的增量，单位手环手势区像素，可负）
   CLICK: 'CLICK',              // 单击，ARG = "n:nx,ny"（归一化 0~1，6 位小数）/ "x,y"（历史绝对像素）/ ""（鼠标模式：指针当前位置）
 
+  // ---- 拖拽（长按后移动）----
+  DRAG: 'DRAG',                // 拖拽，ARG = "n:x1,y1,x2,y2"（归一化起止点）
+
   // ---- 业务 ----
   APP_LAUNCH: 'APP_LAUNCH',    // 启动自定义快捷应用，ARG = 包名
   NOTIFY_DISMISS: 'NOTIFY_DISMISS', // 通知栏（骨架实现为下拉通知栏，见 docs/PROTOCOL.md）
@@ -86,6 +89,7 @@ export const CMD_TEXT = {
   CURSOR_OFF: '鼠标模式关',
   CURSOR_MOVE: '指针移动',
   CLICK: '单击',
+  DRAG: '拖拽',
   APP_LAUNCH: '启动应用',
   NOTIFY_DISMISS: '通知栏',
   PING: '心跳',
@@ -258,6 +262,50 @@ export function decodeDelta(arg) {
   return { dx: dx, dy: dy }
 }
 
+// ------------------------------------------------------------------
+// 拖拽参数编解码（DRAG）
+// ------------------------------------------------------------------
+
+/**
+ * 组装拖拽参数：起点与终点均为归一化坐标（0~1，6 位小数）。
+ * @param {Array<number>} p1 起点 [nx, ny]
+ * @param {Array<number>} p2 终点 [nx, ny]
+ * @returns {string} 形如 "n:0.300000,0.400000,0.500000,0.800000"
+ */
+export function encodeDragArg(p1, p2) {
+  const a = p1 || [0, 0]
+  const b = p2 || [0, 0]
+  const f = (v) => clamp01(v).toFixed(NORMALIZED_DIGITS)
+  return NORMALIZED_PREFIX + f(a[0]) + ',' + f(a[1]) + ',' + f(b[0]) + ',' + f(b[1])
+}
+
+/**
+ * 解析拖拽参数 "n:x1,y1,x2,y2"，格式非法 / 越界返回 null。
+ * @returns {Object|null} { x1, y1, x2, y2 }
+ */
+export function decodeDragArg(arg) {
+  if (!arg || typeof arg !== 'string') {
+    return null
+  }
+  const raw = arg.trim()
+  if (raw.slice(0, NORMALIZED_PREFIX.length).toLowerCase() !== NORMALIZED_PREFIX) {
+    return null
+  }
+  const parts = raw.slice(NORMALIZED_PREFIX.length).split(',')
+  if (parts.length < 4) {
+    return null
+  }
+  const v = []
+  for (let i = 0; i < 4; i += 1) {
+    const n = parseFloat(parts[i])
+    if (isNaN(n) || n < 0 || n > 1) {
+      return null
+    }
+    v.push(n)
+  }
+  return { x1: v[0], y1: v[1], x2: v[2], y2: v[3] }
+}
+
 export default {
   MAGIC,
   SEP,
@@ -271,6 +319,8 @@ export default {
   decode,
   encodeNormalizedPoint,
   decodePointArg,
+  encodeDragArg,
+  decodeDragArg,
   encodeDelta,
   decodeDelta
 }
